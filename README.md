@@ -1,2 +1,2 @@
 # workout_webapp
-a web for my own record for my daily workout
+自用的健身紀錄web app，也當作一個練習
