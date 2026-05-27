@@ -9,16 +9,15 @@ export async function POST(req: Request) {
     const { email, password, name, account } = await req.json()
 
     if (!email || !password) {
-      return NextResponse.json({ error: "Missing email or password" }, { status: 400 })
+      return NextResponse.json({ error: "信箱或密碼不可為空" }, { status: 400 })
     }
 
-    // Check if user already exists
     const existingUser = await db.query.users.findFirst({
       where: eq(users.email, email)
     })
 
     if (existingUser) {
-      return NextResponse.json({ error: "User already exists" }, { status: 400 })
+      return NextResponse.json({ error: "此帳號已存在" }, { status: 400 })
     }
 
     const hashedPassword = await bcrypt.hash(password, 10)
@@ -30,12 +29,12 @@ export async function POST(req: Request) {
       account,
     }).returning()
 
-    return NextResponse.json({ 
-      message: "User registered successfully", 
-      user: { id: newUser.id, email: newUser.email, name: newUser.name } 
+    return NextResponse.json({
+      message: "註冊成功",
+      user: { id: newUser.id, email: newUser.email, name: newUser.name, account: newUser.account }
     })
   } catch (error) {
-    console.error("Registration error:", error)
+    console.error("註冊失敗:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
