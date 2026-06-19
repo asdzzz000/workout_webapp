@@ -6,7 +6,7 @@ import { bodyPart, workoutItem } from './schema'
 import { eq } from 'drizzle-orm'
 
 async function seed() {
-  console.log('開始注入初始化資料...')
+  console.log('開始注入初始化資料')
 
   // 1. 定義部位與其對應的動作
   const data = [
@@ -67,7 +67,7 @@ async function seed() {
           .values({ partName: group.part })
           .returning()
         partRecord = inserted
-        console.log(`✅ 已新增部位：${group.part}`)
+        console.log('已新增部位：' + group.part)
       }
 
       // 注入動作
@@ -85,7 +85,7 @@ async function seed() {
             partId: partRecord.partId,
             description: `${group.part}訓練動作`
           })
-          console.log(`  └ ➕ 已新增動作：${itemName}`)
+          console.log('已新增動作：' + itemName)
         }
       }
     }
