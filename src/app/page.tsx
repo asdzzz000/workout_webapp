@@ -2,11 +2,16 @@ import React from "react";
 import { auth } from "@/auth";
 import LogoutButton from "@/components/auth/LogoutButton";
 import Link from "next/link";
+import { db } from "@/db";
+import { workoutSession } from "@/db/schema";
+import { eq, desc } from "drizzle-orm";
+import WorkoutHistoryList from "@/components/workout/WorkoutHistoryList";
+import type { SessionData } from "@/types/workout";
 
 export default async function HomePage() {
   const session = await auth();
 
-  // 如果使用者未登入，顯示 Landing Page
+  // 未登入時顯示介紹與登入入口
   if (!session) {
     return (
       <main className="container" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: "80vh", textAlign: "center" }}>
@@ -37,10 +42,65 @@ export default async function HomePage() {
     );
   }
 
-  // 如果使用者已登入，顯示 Dashboard
+  // 取得已登入使用者的訓練紀錄
+  const userId = (session.user as { id?: string })?.id;
+  let userSessions: SessionData[] = [];
+  let weeklyCount = 0;
+  let weeklyVolume = 0;
+
+  if (userId) {
+    try {
+      userSessions = await db.query.workoutSession.findMany({
+        where: eq(workoutSession.userId, userId),
+        orderBy: [desc(workoutSession.sessionDate), desc(workoutSession.createdAt)],
+        with: {
+          exercises: {
+            orderBy: (exercises, { asc }) => [asc(exercises.orderNum)],
+            with: {
+              workoutItem: {
+                with: {
+                  bodyPart: true,
+                }
+              },
+              sets: {
+                orderBy: (sets, { asc }) => [asc(sets.setNumber)],
+              },
+            }
+          }
+        }
+      });
+
+      // 計算本週資料（週一 00:00:00 到現在）
+      const today = new Date();
+      const day = today.getDay();
+      const mondayDiff = today.getDate() - day + (day === 0 ? -6 : 1);
+      const startOfWeek = new Date(today.getFullYear(), today.getMonth(), mondayDiff, 0, 0, 0, 0);
+
+      const sessionsThisWeek = userSessions.filter((s) => {
+        const sDate = new Date(s.sessionDate);
+        return sDate >= startOfWeek;
+      });
+
+      weeklyCount = sessionsThisWeek.length;
+
+      sessionsThisWeek.forEach((s) => {
+        s.exercises.forEach((ex) => {
+          ex.sets.forEach((set) => {
+            const w = set.weightKg ? parseFloat(set.weightKg) : 0;
+            const r = set.reps ? set.reps : 0;
+            weeklyVolume += w * r;
+          });
+        });
+      });
+    } catch (error) {
+      console.error("Failed to query user sessions or compute stats:", error);
+    }
+  }
+
+  // 已登入時顯示訓練儀表板
   return (
     <main className="container" style={{ paddingBottom: "100px" }}>
-      {/* Header Section */}
+      {/* 頁首 */}
       <header style={{ marginBottom: "2.5rem", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
           <h1 style={{ fontSize: "1.875rem", fontWeight: "800", letterSpacing: "-0.025em" }}>
@@ -51,67 +111,74 @@ export default async function HomePage() {
         <LogoutButton />
       </header>
 
-      {/* Summary Statistics Card */}
+      {/* 本週訓練摘要 */}
       <div className="card" style={{ display: "flex", justifyContent: "space-around", textAlign: "center" }}>
         <div>
           <p className="text-muted">本週訓練</p>
-          <p style={{ fontSize: "1.5rem", fontWeight: "700" }}>3 次</p>
+          <p style={{ fontSize: "1.5rem", fontWeight: "700" }}>{weeklyCount} 次</p>
         </div>
         <div style={{ borderLeft: "1px solid var(--border)", height: "40px", alignSelf: "center" }}></div>
         <div>
-          <p className="text-muted">累計負重</p>
-          <p style={{ fontSize: "1.5rem", fontWeight: "700" }}>1,250 kg</p>
+          <p className="text-muted">本週累計負重</p>
+          <p style={{ fontSize: "1.5rem", fontWeight: "700" }}>
+            {weeklyVolume > 0 ? `${weeklyVolume.toLocaleString()} kg` : "0 kg"}
+          </p>
         </div>
       </div>
 
-      {/* Quick Actions */}
+      {/* 快速操作 */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "2.5rem" }}>
-        <button className="btn-primary" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.5rem", padding: "1.5rem" }}>
+        <Link
+          href="/sessions/new"
+          className="btn-primary"
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "0.5rem",
+            padding: "1.5rem",
+            textDecoration: "none",
+            background: "linear-gradient(135deg, var(--primary) 0%, #2563eb 100%)",
+            boxShadow: "0 4px 14px rgba(59, 130, 246, 0.25)",
+            borderRadius: "16px",
+          }}
+        >
           <span style={{ fontSize: "1.5rem" }}>➕</span>
-          <span>開始新訓練</span>
-        </button>
-        <button className="btn-secondary" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.5rem", padding: "1.5rem" }}>
+          <span style={{ fontWeight: "700" }}>開始新訓練</span>
+        </Link>
+        <Link
+          href="/workout-items"
+          className="btn-secondary"
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "0.5rem",
+            padding: "1.5rem",
+            textDecoration: "none",
+            borderRadius: "16px",
+            border: "1px solid var(--border)",
+            background: "var(--card)",
+          }}
+        >
           <span style={{ fontSize: "1.5rem" }}>📚</span>
-          <span>動作庫</span>
-        </button>
+          <span style={{ fontWeight: "700", color: "var(--foreground)" }}>動作庫</span>
+        </Link>
       </div>
 
-      {/* Recent Activity Section */}
+      {/* 訓練歷史紀錄 */}
       <section>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-          <h2 style={{ fontSize: "1.25rem", fontWeight: "700" }}>最近紀錄</h2>
-          <button style={{ background: "none", color: "var(--primary)", fontWeight: "600", fontSize: "0.875rem" }}>查看全部</button>
+          <h2 style={{ fontSize: "1.25rem", fontWeight: "700" }}>訓練歷史紀錄</h2>
+          <span style={{ fontSize: "0.8rem", color: "var(--muted)", fontWeight: "600" }}>
+            共 {userSessions.length} 筆
+          </span>
         </div>
 
-        <div className="card" style={{ padding: "0" }}>
-          {[
-            { id: 1, date: "今天", title: "胸部與三頭肌", duration: "45 min", weight: "450kg" },
-            { id: 2, date: "昨天", title: "背部與二頭肌", duration: "60 min", weight: "800kg" },
-          ].map((workout, index, arr) => (
-            <div
-              key={workout.id}
-              style={{
-                padding: "1.25rem",
-                borderBottom: index === arr.length - 1 ? "none" : "1px solid var(--border)",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center"
-              }}
-            >
-              <div>
-                <p style={{ fontWeight: "600" }}>{workout.title}</p>
-                <p className="text-muted">{workout.date} • {workout.duration}</p>
-              </div>
-              <div style={{ textAlign: "right" }}>
-                <p style={{ fontWeight: "700", color: "var(--accent)" }}>{workout.weight}</p>
-                <p className="text-muted">總負重</p>
-              </div>
-            </div>
-          ))}
-        </div>
+        <WorkoutHistoryList initialSessions={userSessions} />
       </section>
 
-      {/* Navigation Placeholder (Bottom) */}
+      {/* 底部導覽列 */}
       <nav style={{
         position: "fixed",
         bottom: 0,
