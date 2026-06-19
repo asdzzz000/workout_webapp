@@ -42,7 +42,7 @@ export default function RegisterPage() {
                 <form action={registerAction} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                     <input className="btn-secondary" style={{ textAlign: "left", cursor: "text" }} type="text" name="name" placeholder="請輸入您的暱稱" required />
                     <input className="btn-secondary" style={{ textAlign: "left", cursor: "text" }} type="text" name="account" placeholder="請輸入您的帳號名稱" required />
-                    <input className="btn-secondary" style={{ textAlign: "left", cursor: "text" }} type="email" name="email" placeholder="請輸入您的email帳號" required />
+                    <input className="btn-secondary" style={{ textAlign: "left", cursor: "text" }} type="email" name="email" placeholder="請輸入你的 Email" required />
                     <input className="btn-secondary" style={{ textAlign: "left", cursor: "text" }} type="password" name="password" placeholder="請輸入您的密碼" required />
                     <button className="btn-primary" type="submit">註冊</button>
                 </form>
