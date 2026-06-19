@@ -36,8 +36,8 @@ export const users = pgTable('user', {
   email: varchar('email', { length: 255 }).notNull().unique(),
   emailVerified: timestamp('email_verified', { mode: 'date' }),
   image: varchar('image', { length: 255 }),
-  passwordHash: varchar('password_hash', { length: 255 }), // For Credentials provider
-  account: varchar('account', { length: 50 }).unique(), // User's custom account name
+  passwordHash: varchar('password_hash', { length: 255 }), // Credentials 登入使用的密碼雜湊
+  account: varchar('account', { length: 50 }).unique(), // 使用者自訂帳號名稱
   heightCm: decimal('height_cm', { precision: 5, scale: 2 }),
   weightKg: decimal('weight_kg', { precision: 5, scale: 2 }),
   createdAt: timestamp('created_at').notNull().defaultNow(),
@@ -109,7 +109,7 @@ export const sessionExercise = pgTable('session_exercise', {
   exerciseId: uuid('exercise_id').primaryKey().defaultRandom(),
   sessionId: uuid('session_id')
     .notNull()
-    .references(() => workoutSession.sessionId),
+    .references(() => workoutSession.sessionId, { onDelete: 'cascade' }),
   itemId: integer('item_id')
     .notNull()
     .references(() => workoutItem.itemId),
@@ -121,7 +121,7 @@ export const exerciseSet = pgTable('exercise_set', {
   setId: uuid('set_id').primaryKey().defaultRandom(),
   exerciseId: uuid('exercise_id')
     .notNull()
-    .references(() => sessionExercise.exerciseId),
+    .references(() => sessionExercise.exerciseId, { onDelete: 'cascade' }),
   setNumber: integer('set_number').notNull(),
   reps: integer('reps'),
   weightKg: decimal('weight_kg', { precision: 6, scale: 2 }),

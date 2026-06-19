@@ -8,6 +8,13 @@
       "when": 1778430428942,
       "tag": "0000_good_the_hand",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1780651832499,
+      "tag": "0001_chilly_pride",
+      "breakpoints": true
     }
   ]
 }
